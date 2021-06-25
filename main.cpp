@@ -3,8 +3,10 @@
 #include "keyboard.h"	//キーボードの処理
 #include "FPS.h"		//FPSの処理
 
-//構造体の定義
+//マクロ定義
+#define TAMA_DIV_MAX 4	//弾の画像の最大数
 
+//構造体の定義
 
 //画像構造体
 struct IMAGE
@@ -67,7 +69,6 @@ GAME_SCENE GameScene;		//現在のゲームのシーン
 GAME_SCENE OldGameSnece;	//前回のゲームのシーン
 GAME_SCENE NextGameSnece;	//次のゲームのシーン
 
-
 //画面の切り替え
 BOOL IsFadeOut = FALSE;		//フェードアウト
 BOOL IsFadeIn = FALSE;		//フィードイン
@@ -83,9 +84,13 @@ int fadeOutCntMax = fadeTimeMax;	//フェードアウトのカウンタMAX
 //フェードイン
 int fadeInCntInit = fadeTimeMax;	//初期値
 int fadeInCnt = fadeInCntInit;		//フェードアウトのカウンタ
-int fadeInCntMax = fadeTimeMax;				//フェードアウトのカウンタMAX
+int fadeInCntMax = fadeTimeMax;		//フェードアウトのカウンタMAX
 
-
+//弾の画像のハンドル
+int Tama[TAMA_DIV_MAX];
+int TamaIndex = 0;				//画像の添字
+int TamachengeCnt = 0;			//画像を変えるタイミング
+int TamachengeCntMax = 30;		//画像を変えるタイミングMAX
 
 //プロトタイプ宣言
 VOID Title(VOID);		//タイトル画面
@@ -105,16 +110,20 @@ VOID ChangeProc(VOID);	//切り替え画面(処理)
 VOID ChangeDraw(VOID);	//切り替え画面(描画)
 
 VOID ChangeScene(GAME_SCENE scene);	//シーン切り替え
-	
+
 VOID CollUpdatepPayer(CHARACTOR* chara);	//当たり判定の領域を更新
 VOID CollUpdate(CHARACTOR* chara);			//ゴールの当たり判定の領域更新
 
 BOOL OnCollRect(RECT a, RECT b);				//矩形と矩形の当たり判定
 
-
+BOOL GameLoad(VOID);	//ゲームのデータを読み込み
 
 BOOL LoadImageMem(IMAGE* image, const char* path);	//ゲームの画像を読み込み
 BOOL LoadAudio(AUDIO* audio, const char* path, int volume, int playType);	//音楽の読み込み
+BOOL LoadimageDivMem(int* handle, const char* path, int DivWidth, int DivHeight);	//ゲームの画像の分割の読み込み
+
+VOID GameInit(VOID);	//ゲームのデータの初期化
+
 
 
 //プログラムは WinMain から始まります
@@ -146,16 +155,28 @@ int WINAPI WinMain(
 		return -1;			// エラーが起きたら直ちに終了
 	}
 
-	
+
 	//ダブルバッファリング有効化
 	SetDrawScreen(DX_SCREEN_BACK);
-	
+
 	//最初のシーンはタイトル画面から
 	GameScene = GAME_SCENE_TITLE;
 
+	//ゲーム読み込み
+	if (!GameLoad())
+	{
+
+		//データの読み込みの失敗したとき
+		DxLib_End();		//Dxlib終了	
+
+		return -1;			//異常終了
+	}
+
+
 	//ゲーム全体の初期化
 
-	
+	//ゲームの初期化
+	GameInit();
 
 	//無限ループ
 	while (1)
@@ -193,8 +214,6 @@ int WINAPI WinMain(
 		case GAME_SCENE_CHANGE:
 			Change();			//切り替え画面
 			break;
-		default:
-			break;
 		}
 
 		//シーンを切り替える
@@ -213,19 +232,109 @@ int WINAPI WinMain(
 		FPSDraw();
 
 		//FPS値を待つ
+
 		FPSWait();
 
 		ScreenFlip();		//ダブルバッファリングした画面を描画
 	}
 
-	
+	//読み込んだ画像を解放
+	for (int i = 0; i < TAMA_DIV_MAX; i++)
+	{
+		DeleteGraph(Tama[i]);
+	}
+
 	// ＤＸライブラリ使用の終了処理
 	DxLib_End();
 
-	return 0;				// ソフトの終了 
+	return 0;	// ソフトの終了 
 }
 
+/// <summary>
+/// ゲームのデータを読み込み
+/// </summary>
+/// <param name=""></param>
+/// <returns>読み込めたらTRUE/読み込めなかったらFALSE</returns>
+BOOL GameLoad(VOID)
+{
+	//画像を分割して読み込み
+	if (LoadimageDivMem(&Tama[0], ".\\Image\\STG_M1.png", 4, 1) == FALSE) { return FALSE; }
 
+	return TRUE;	//全て読み込めた！
+}
+
+/// <summary>
+/// 画像を分割してメモリに読み込み
+/// </summary>
+/// <param name="handle">ハンドル配列の先頭アドレス</param>
+/// <param name="path">画像のパス</param>
+/// <param name="DivWidth">分割するときの横の数</param>
+/// <param name="Diveight">分割するときの縦の数</param>
+/// <returns></returns>
+BOOL LoadimageDivMem(int* handle, const char* path, int DivWidth, int DivHeight)
+{
+
+
+	//弾の読み込み
+	int IsTamaLoad = -1;	//画像が読み込めたか？
+
+	//一時的に画像のハンドルを用意する
+	int TamaHandle = LoadGraph(path);
+
+	//読み込みエラー
+	if (TamaHandle == -1)
+	{
+		MessageBox(
+			GetMainWindowHandle(),	//ウィンドウハンドル
+			path,				//本文
+			"画像読み込みエラー",	//タイトル
+			MB_OK					//ボタン
+		);
+
+		return FALSE;	//読み込み失敗
+	}
+
+	//画像と幅と高さを取得
+	int TamaWidth = -1;		//幅
+	int TamaHeight = -1;	//高さ
+	GetGraphSize(TamaHandle, &TamaWidth, &TamaHeight);
+
+	//分割して読み込み
+	IsTamaLoad = LoadDivGraph(
+		path,											//画像のパス
+		TAMA_DIV_MAX,									//分割総数
+		DivWidth, DivHeight,								//横の分割,縦の分割
+		TamaWidth / DivWidth, TamaHeight / DivHeight,	//画像一つ分の幅，高さ
+		handle											//連続で管理する配列の先頭アドレス
+	);
+
+	//分割エラー
+	if (IsTamaLoad == -1)
+	{
+		MessageBox(
+			GetMainWindowHandle(),	//ウィンドウハンドル
+			path,					//本文
+			"画像分割エラー",	//タイトル
+			MB_OK					//ボタン
+		);
+
+		return FALSE;	//読み込み失敗
+	}
+
+	//一時的に読み込んだハンドルを解放
+	DeleteGraph(TamaHandle);
+
+	return TRUE;
+}
+
+// <summary>
+/// ゲームデータを初期化
+/// </summary>
+/// <param name=""></param>
+VOID GameInit(VOID)
+{
+
+}
 
 /// <summary>
 /// 画像をメモリに読み込み
@@ -281,7 +390,7 @@ BOOL LoadAudio(AUDIO* audio, const char* path, int volume, int playType)
 
 	//音楽が読み込めなったときは、エラー(-1)がはいる
 
-	if (audio->handle== -1)
+	if (audio->handle == -1)
 	{
 		MessageBox(
 			GetMainWindowHandle(),	//メインのウィンドウハンドル
@@ -323,20 +432,44 @@ VOID Title(VOID)
 //タイトル画面の処理
 VOID TitleProc(VOID)
 {
-	if (KeyClick(KEY_INPUT_RETURN)==TRUE)
+	if (KeyClick(KEY_INPUT_RETURN) == TRUE)
 	{
 		//プレイ画面に切り替え
 		ChangeScene(GAME_SCENE_PLAY);
 	}
-		
-	
+
+
 	return;
 }
 
 //タイトル画面の描画
 VOID TitleDraw(VOID)
 {
-	
+	//弾の描画
+	DrawGraph(0, 0, Tama[TamaIndex], TRUE);
+
+	if (TamachengeCnt < TamachengeCntMax)
+	{
+
+		TamachengeCnt++;
+
+	}
+	else
+	{
+		//弾の添字が弾の分割数の最大よりも下のとき
+		if (TamaIndex < TAMA_DIV_MAX - 1)
+		{
+			TamaIndex++;	//次の画像へ
+		}
+		else
+		{
+			TamaIndex = 0;	//最初に戻す
+		}
+		TamachengeCnt = 0;
+	}
+
+	DrawString(0, 0, "タイトル画面", GetColor(0, 0, 0));
+
 	return;
 }
 
@@ -366,6 +499,7 @@ VOID PlayProc(VOID)
 //プレイ画面の描画
 VOID PlayDraw(VOID)
 {
+	DrawString(0, 0, "プレイ画面", GetColor(0, 0, 0));
 
 	return;
 }
@@ -398,7 +532,8 @@ VOID EndProc(VOID)
 VOID EndDraw(VOID)
 {
 
-	
+	DrawString(0, 0, "エンド画面", GetColor(0, 0, 0));
+
 	return;
 }
 
@@ -416,9 +551,9 @@ VOID Change(VOID)
 VOID ChangeProc(VOID)
 {
 	//フェードイン
-	if (IsFadeIn==TRUE)
+	if (IsFadeIn == TRUE)
 	{
-		if (fadeInCnt>fadeInCntMax)
+		if (fadeInCnt > fadeInCntMax)
 		{
 			fadeInCnt--;	//カウンタを減らす
 		}
@@ -447,13 +582,13 @@ VOID ChangeProc(VOID)
 		}
 	}
 
-		//切り替え処理終了
-		if (IsFadeIn==FALSE && IsFadeOut==FALSE)
-		{
-			//フェードインしていない、フェードアウトもしていないとき
-			GameScene = NextGameSnece;	//次のシーンに切り替え
-			OldGameSnece = GameScene;	//以前のゲームシーンに更新
-		}
+	//切り替え処理終了
+	if (IsFadeIn == FALSE && IsFadeOut == FALSE)
+	{
+		//フェードインしていない、フェードアウトもしていないとき
+		GameScene = NextGameSnece;	//次のシーンに切り替え
+		OldGameSnece = GameScene;	//以前のゲームシーンに更新
+	}
 
 
 	return;
@@ -475,7 +610,7 @@ VOID ChangeDraw(VOID)
 	case GAME_SCENE_END:
 		EndDraw();		//エンド画面の描画
 		break;
-	
+
 	default:
 		break;
 	}
@@ -483,15 +618,15 @@ VOID ChangeDraw(VOID)
 	//SetDrawBlendMode(DX_BLENDMODE_ALPHA, 127);		//0～255
 	//DrawBox(0, 0, GAME_WIDHT, GAME_WIDTH, GetColor(0, 0, 0), TRUE);
 	//SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0);
-	
+
 	//フェードイン
-	if (IsFadeIn==TRUE)
+	if (IsFadeIn == TRUE)
 	{
 		SetDrawBlendMode(DX_BLENDMODE_ALPHA, ((float)fadeInCnt / fadeInCntMax) * 255);
 	}
 
 	//フェードアウト
-	if (IsFadeOut==TRUE)
+	if (IsFadeOut == TRUE)
 	{
 		SetDrawBlendMode(DX_BLENDMODE_ALPHA, ((float)fadeOutCnt / fadeOutCntMax) * 255);
 	}
@@ -549,10 +684,10 @@ BOOL OnCollRect(RECT a, RECT b)
 {
 
 	if (
-			a.left < b.right &&		// 矩形Aの左辺X座標 < 矩形Bの右辺X座標　かつ
-			a.right > b.left&&		// 矩形Aの右辺X座標 > 矩形Bの左辺X座標　かつ
-			a.top < b.bottom &&		// 矩形Aの上辺Y座標 < 矩形Bの下辺Y座標	かつ
-			a.bottom > b.top		// 矩形Aの下辺Y座標 > 矩形Bの上辺Y座標
+		a.left < b.right &&		// 矩形Aの左辺X座標 < 矩形Bの右辺X座標　かつ
+		a.right > b.left &&		// 矩形Aの右辺X座標 > 矩形Bの左辺X座標　かつ
+		a.top < b.bottom &&		// 矩形Aの上辺Y座標 < 矩形Bの下辺Y座標	かつ
+		a.bottom > b.top		// 矩形Aの下辺Y座標 > 矩形Bの上辺Y座標
 		)
 	{
 		//当たってるとき
@@ -563,7 +698,7 @@ BOOL OnCollRect(RECT a, RECT b)
 		//当たっていないとき
 		return false;
 	}
-	
 
-	
+
+
 }
