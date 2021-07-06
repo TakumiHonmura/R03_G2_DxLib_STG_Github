@@ -617,7 +617,7 @@ VOID PlayProc(VOID)
 			{
 
 				//tama[i].x;
-				tama->y -= tama[i].speed;
+				tama[i].y -= tama[i].speed;
 
 				//画面外に出たら、描画しない
 				if (tama[i].y + tama[i].height<0 || //画面外(上)
