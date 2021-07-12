@@ -11,6 +11,8 @@
 #define TAMA_DIV_MAX 4	//弾の画像の最大数
 #define TAMA_MAX 20		//弾の総数
 
+
+
 //構造体の定義
 
 //画像構造体
@@ -132,6 +134,11 @@ int tamashotCntMAX = 5;
 
 //プレイヤー
 CHARACTOR player;
+
+//背景画像
+IMAGE back[2];	//背景の画像は2枚
+
+
 
 //プロトタイプ宣言
 VOID Title(VOID);		//タイトル画面
@@ -291,6 +298,13 @@ int WINAPI WinMain(
 	// ＤＸライブラリ使用の終了処理
 	DxLib_End();
 
+	//プレイヤー解放
+	DeleteGraph(player.img.handle);
+
+	//背景画像解放
+	DeleteGraph(back[0].handle);
+	DeleteGraph(back[1].handle);
+
 	return 0;	// ソフトの終了 
 }
 
@@ -338,6 +352,25 @@ BOOL GameLoad(VOID)
 
 	//プレイヤーの画像を読み込み
 	if (LoadImageMem(&player.img, ".\\Image\\player.png") == FALSE) { return FALSE; }
+	player.img.x = GAME_WIDTH / 2 - player.img.width;
+	player.img.y = GAME_HEIGHT / 2 - player.img.height;
+	CollUpdatepPayer(&player);		//当たり判定の更新
+	player.img.IsDraw = TRUE;		//描画する
+
+	//背景の画像を読み込み①
+	if (LoadImageMem(&back[0], ".\\Image\\hosi.png") == FALSE) { return FALSE; }
+	back[0].x=0;
+	back[0].y=-back[0].height;	//画像の高さ、位置にあげる
+	back[0].IsDraw = TRUE;		//描画する
+	
+	//背景の画像を読み込み②
+	if (LoadImageMem(&back[1], ".\\Image\\hosi_rev.png") == FALSE) { return FALSE; }
+	back[1].x = 0;
+	back[1].y =0;	//画像の高さ、位置にあげる
+	back[1].IsDraw = TRUE;		//描画する
+
+	
+
 
 	return TRUE;	//全て読み込めた！
 }
@@ -420,6 +453,19 @@ VOID GameInit(VOID)
 	player.img.IsDraw = TRUE;		//描画する
 
 	player.speed = 5;
+
+	//背景の画像を設定①
+	back[0].x = 0;
+	back[0].y = -back[0].height;	//画像の高さ、位置にあげる
+	back[0].IsDraw = TRUE;		//描画する
+
+	//背景の画像を設定②
+	back[1].x = 0;
+	back[1].y = 0;	//画像の高さ、位置にあげる
+	back[1].IsDraw = TRUE;		//描画する
+
+
+
 }
 
 /// <summary>
@@ -584,6 +630,21 @@ VOID Play(VOID)
 //プレイ画面の処理
 VOID PlayProc(VOID)
 {
+	//背景の描画
+	for (int i = 0; i < 2; i++) 
+	{
+		//描画
+		DrawGraph(back[i].x, back[i].y, back[i].handle, TRUE);
+
+		//画像を下まで行ったとき
+		if (back[i].y > GAME_HEIGHT)
+		{
+			back[i].y = -back[i].height+1;	//高さ分上に戻す
+		}
+
+		//画像を下に動かす
+		back[i].y++;
+	}
 
 	if (KeyClick(KEY_INPUT_RETURN) == TRUE)
 	{
@@ -702,6 +763,8 @@ VOID PlayProc(VOID)
 				//半径を足す
 				tama[i].radius += tama[i].speed;
 
+				CollUpdateTama(&tama[i]);
+
 				//画面外に出たら、描画しない
 				if (tama[i].y + tama[i].height<0 || //画面外(上)
 					tama[i].y>GAME_HEIGHT		 || //画面外(下)
@@ -777,6 +840,16 @@ VOID PlayDraw(VOID)
 		if (tama[i].IsDraw==TRUE)
 		{
 			DrawTama(&tama[i]);
+
+			//当たり判定の描画
+				if (GAME_DEBUG == TRUE)
+				{
+					DrawBox(
+						tama[i].coll.left,tama[i].coll.top,tama[i].coll.right,tama[i].coll.bottom,
+						GetColor(255, 0, 0), FALSE
+					);
+
+				}
 		}
 	}
 
