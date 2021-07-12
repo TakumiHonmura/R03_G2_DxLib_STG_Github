@@ -11,7 +11,8 @@
 #define TAMA_DIV_MAX 4	//弾の画像の最大数
 #define TAMA_MAX 20		//弾の総数
 
-
+#define TEKI_MAX 10		//敵の数
+#define TEKI_KIND 8		//敵の種類
 
 //構造体の定義
 
@@ -138,7 +139,26 @@ CHARACTOR player;
 //背景画像
 IMAGE back[2];	//背景の画像は2枚
 
+//敵データ
+CHARACTOR teki[TEKI_MAX];
 
+//敵データ(元)
+CHARACTOR teki_moto[TEKI_KIND];
+
+//敵データのパス
+char tekiPath[TEKI_KIND][255] =
+{
+
+	{ ".\\Image\\teki_blue.png"},
+	{ ".\\Image\\teki_gray.png"},
+	{ ".\\Image\\teki_green.png"},
+	{ ".\\Image\\teki_mizu.png"},
+	{ ".\\Image\\teki_purple.png"},
+	{ ".\\Image\\teki_red.png"},
+	{ ".\\Image\\teki_red_big.png"},
+	{ ".\\Image\\teki_yellow.png"},
+
+};
 
 //プロトタイプ宣言
 VOID Title(VOID);		//タイトル画面
@@ -370,6 +390,16 @@ BOOL GameLoad(VOID)
 	back[1].IsDraw = TRUE;		//描画する
 
 	
+	//敵の画像を読み込み
+	for (int i = 0; i < TEKI_KIND; i++)
+	{
+		if (LoadImageMem(&teki_moto[0].img, tekiPath[i]) == FALSE) { return FALSE; }
+		teki_moto[i].img.x = GAME_WIDTH / 2 - teki_moto[i].img.width;
+		teki_moto[i].img.y = -teki_moto[i].img.height;
+		CollUpdatepPayer(&teki_moto[i]);		//当たり判定の更新
+		teki_moto[i].img.IsDraw = FALSE;		//描画する
+	}
+
 
 
 	return TRUE;	//全て読み込めた！
