@@ -628,7 +628,7 @@ VOID Title(VOID)
 //タイトル画面の処理
 VOID TitleProc(VOID)
 {
-	if (KeyClick(KEY_INPUT_RETURN) == TRUE)
+	if (MouseDown(MOUSE_INPUT_RIGHT) == TRUE)
 	{
 		//ゲームの初期化
 		GameInit();
@@ -701,7 +701,7 @@ VOID Play(VOID)
 VOID PlayProc(VOID)
 {
 
-	if (KeyClick(KEY_INPUT_RETURN) == TRUE)
+	if(MouseDown(MOUSE_INPUT_RIGHT) == TRUE)
 	{
 		//プレイ画面に切り替え
 		ChangeScene(GAME_SCENE_END);
@@ -1071,7 +1071,7 @@ VOID End(VOID)
 VOID EndProc(VOID)
 {
 
-	if (KeyClick(KEY_INPUT_RETURN) == TRUE)
+	if (MouseDown(MOUSE_INPUT_RIGHT) == TRUE)
 	{
 		//タイトル画面に切り替え
 		ChangeScene(GAME_SCENE_TITLE);
