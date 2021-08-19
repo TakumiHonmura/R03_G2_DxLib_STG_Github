@@ -140,7 +140,9 @@ int tamaShotCntMAX = 5;
 CHARACTOR player;
 
 //背景画像
-IMAGE back[2];	//背景の画像は2枚
+IMAGE back[2];		//背景の画像は2枚
+IMAGE SCENE_TITLE;	//タイトル画面の背景
+IMAGE SCENE_END;	//エンド画面の背景
 
 //敵データ
 CHARACTOR teki[TEKI_MAX];
@@ -338,6 +340,9 @@ int WINAPI WinMain(
 	//背景画像解放
 	DeleteGraph(back[0].handle);
 	DeleteGraph(back[1].handle);
+	DeleteGraph(SCENE_TITLE.handle);
+	DeleteGraph(SCENE_END.handle);
+
 
 	//敵の画像を解放
 	for (int i=0;i<TEKI_KIND;i++)
@@ -394,35 +399,27 @@ BOOL GameLoad(VOID)
 
 	//プレイヤーの画像を読み込み
 	if (LoadImageMem(&player.img, ".\\Image\\player.png") == FALSE) { return FALSE; }
-	player.img.x = GAME_WIDTH / 2 - player.img.width;
-	player.img.y = GAME_HEIGHT / 2 - player.img.height;
-	CollUpdatePlayer(&player);		//当たり判定の更新
-	player.img.IsDraw = TRUE;		//描画する
 
-	//背景の画像を読み込み①
+	//プレイ画面背景の画像を読み込み①
 	if (LoadImageMem(&back[0], ".\\Image\\hosi.png") == FALSE) { return FALSE; }
-	back[0].x=0;
-	back[0].y=-back[0].height;	//画像の高さ、位置にあげる
-	back[0].IsDraw = TRUE;		//描画する
 	
-	//背景の画像を読み込み②
+	
+	//プレイ画面背景の画像を読み込み②
 	if (LoadImageMem(&back[1], ".\\Image\\hosi_rev.png") == FALSE) { return FALSE; }
-	back[1].x = 0;
-	back[1].y =0;	//画像の高さ、位置にあげる
-	back[1].IsDraw = TRUE;		//描画する
 
-	
+
+	//タイトル画面背景の画像を読み込み
+	if (LoadImageMem(&SCENE_TITLE, ".\\Image\\SCENE_TITLE.png") == FALSE) { return FALSE; }
+
+	//エンド画面背景の画像を読み込み
+	if (LoadImageMem(&SCENE_END, ".\\Image\\SCENE_END.png") == FALSE) { return FALSE; }
+
 	//敵の画像を読み込み
 	for (int i = 0; i < TEKI_KIND; i++)
 	{
 		if (LoadImageMem(&teki_moto[0].img, tekiPath[i]) == FALSE) { return FALSE; }
-		teki_moto[i].img.x = GAME_WIDTH / 2 - teki_moto[i].img.width;
-		teki_moto[i].img.y = -teki_moto[i].img.height;
-		CollUpdatePlayer(&teki_moto[i]);		//当たり判定の更新
-		teki_moto[i].img.IsDraw = FALSE;		//描画する
+
 	}
-
-
 
 	return TRUE;	//全て読み込めた！
 }
@@ -528,7 +525,15 @@ VOID GameInit(VOID)
 		teki_moto[i].img.IsDraw = FALSE;		//描画する
 	}
 
+	//タイトル画面の背景を設定
+	SCENE_TITLE.x = 0;
+	SCENE_TITLE.y = 0;
+	SCENE_TITLE.IsDraw = TRUE;			//描画する
 
+	//エンド画面の背景を設定
+	SCENE_END.x = 0;
+	SCENE_END.y = 0;
+	SCENE_END.IsDraw = TRUE;			//描画する
 
 }
 
@@ -647,8 +652,10 @@ VOID TitleProc(VOID)
 //タイトル画面の描画
 VOID TitleDraw(VOID)
 {
+	//タイトル画面背景の画像を表示
+	DrawGraph(SCENE_TITLE.x, SCENE_TITLE.y, SCENE_TITLE.handle, true);
 
-	DrawString(0, 0, "タイトル画面", GetColor(0, 0, 0));
+	DrawString(0, 0, "タイトル画面", GetColor(0, 0, 0));	
 
 	return;
 }
@@ -703,7 +710,7 @@ VOID PlayProc(VOID)
 
 	if(MouseDown(MOUSE_INPUT_RIGHT) == TRUE)
 	{
-		//プレイ画面に切り替え
+		//エンド画面に切り替え
 		ChangeScene(GAME_SCENE_END);
 
 		//マウスを描画する
@@ -1087,6 +1094,8 @@ VOID EndDraw(VOID)
 
 	DrawString(0, 0, "エンド画面", GetColor(0, 0, 0));
 
+	//エンド画面背景の画像を表示
+	DrawGraph(SCENE_END.x, SCENE_END.y, SCENE_END.handle, true);
 	return;
 }
 
